@@ -1,0 +1,138 @@
+﻿using System;
+using System.ComponentModel;
+using System.Net;
+using System.Net.Sockets;
+using System.Windows.Forms;
+using System.Text;
+
+namespace UDPListener
+{
+	public partial class UDPListenerForm : Form
+	{	
+		private int _listenPort;
+		delegate void SetTextCallback(string text);
+
+		/// <summary>
+		/// The main entry point for the application.
+		/// </summary>
+		[STAThread]
+		static void Main()
+		{
+			Application.EnableVisualStyles();
+			Application.SetCompatibleTextRenderingDefault(false);
+			Application.Run(new UDPListenerForm());
+		}
+
+		public UDPListenerForm()
+		{
+			InitializeComponent();
+		}
+
+		protected override void OnLoad(EventArgs e)
+		{
+			base.OnLoad(e);
+			StartListening();
+		}
+
+		private void StartListening()
+		{
+			_listenPort = GetPort();
+			if (_listenPort <= 0)
+			{
+				return;
+			}
+
+			textBox.Clear();
+			backgroundWorker1.RunWorkerAsync();
+		}
+
+		private void WriteLine(string text)
+		{
+			if (textBox.InvokeRequired)
+			{
+				SetTextCallback d = WriteLine;
+				Invoke(d, new object[] { text });
+			}
+			else
+			{
+				textBox.AppendText(String.Format("{0}{1}", text, Environment.NewLine));
+			}
+		}
+
+		private int GetPort()
+		{
+			int port;
+			if (int.TryParse(toolStripTextBox1.Text, out port) == false)
+			{
+				return -1;
+			}
+
+			if (port <= 0 || port > 65535)
+			{
+				return -1;
+			}
+
+			return port;
+		}
+
+
+		private void backgroundWorker1_DoWork(object sender, DoWorkEventArgs e)
+		{
+			BackgroundWorker worker = sender as BackgroundWorker;
+			if (worker == null) return;
+			if (_listenPort <= 0) return;
+
+			//WriteLine(String.Format("Listening on port {0}", _listenPort));
+
+			using (UdpClient listener = new UdpClient(_listenPort))
+			{
+				IPEndPoint groupEP = new IPEndPoint(IPAddress.Any, _listenPort);
+
+				try
+				{
+					while (worker.CancellationPending == false)
+					{
+						byte[] bytes = listener.Receive(ref groupEP);
+						WriteLine(Encoding.ASCII.GetString(bytes, 0, bytes.Length));
+					}
+					WriteLine("Cancelling...");
+				}
+				catch (Exception ex)
+				{
+					WriteLine(ex.ToString());
+				}
+			}
+		}
+
+		private void clearToolStripButton_Click(object sender, EventArgs e)
+		{
+			textBox.Clear();
+		}
+
+		private void copyToolStripButton_Click(object sender, EventArgs e)
+		{
+			Clipboard.SetText(textBox.SelectedText);
+		}
+
+		private void copyAllToolStripButton_Click(object sender, EventArgs e)
+		{
+			Clipboard.Clear();
+			Clipboard.SetText(textBox.Text);
+		}
+
+		private void toolStripTextBox1_Validating(object sender, CancelEventArgs e)
+		{
+			if(GetPort() <= 0)
+			{
+				MessageBox.Show("Bad Port");
+			}
+		}
+
+		private void _restartToolStripButton_Click(object sender, EventArgs e)
+		{
+			backgroundWorker1.CancelAsync();
+			backgroundWorker1.RunWorkerAsync();
+		}
+
+	}
+}

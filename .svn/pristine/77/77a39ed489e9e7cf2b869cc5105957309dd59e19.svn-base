@@ -1,0 +1,42 @@
+﻿using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+
+namespace UDPSendMessage
+{
+	public static class Sender
+	{
+		public const int DefaultPort = 11000;
+
+		// Send to default port
+		public static void Send(string msg)
+		{
+			Send(msg, DefaultPort);
+		}
+
+		// Send to localhost
+		public static void Send(string msg, int port)
+		{
+			IPAddress localhost = IPAddress.Parse("127.0.0.1");
+			Send(msg, port, localhost);
+		}
+
+		// Send UDP message
+		public static void Send(string msg, int port, IPAddress server)
+		{
+			using (Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
+			{
+				byte[] sendbuf = Encoding.ASCII.GetBytes(msg);
+				IPEndPoint ep = new IPEndPoint(server, port);
+				s.SendTo(sendbuf, ep);
+			}
+		}
+
+		public static void SendMethodName()
+		{
+			Send(new StackFrame(1).GetMethod().Name);
+		}
+
+	}
+}
